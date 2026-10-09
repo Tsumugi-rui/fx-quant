@@ -1,0 +1,38 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# ---- 运行产物（本地生成，不入库）----
+logs/
+*.log
+_diag_*.txt
+_sweep_*.txt
+final_report.json
+
+# ---- 旧版备份 / 临时文件（非项目内容）----
+*.bak
+*.bak-*
+*.orig
+*.tmp
+*.swp
+*~
+
+# ---- 编辑器 / 操作系统 ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- 敏感信息兜底（正常情况下不存在）----
+.env
+.env.*
+*.pem
+*.key
+credentials.json

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>fx-quant v1.0 最终版策略</title>
+<style>
+  :root{
+    --bg:#f6f8fa; --card:#ffffff; --ink:#1f2328; --dim:#59636e;
+    --line:#d8dee4; --up:#c0392b; --down:#1a7f37; --accent:#0969da;
+    --accent-soft:#ddf4ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    line-height:1.65;font-size:15px}
+  .wrap{max-width:960px;margin:0 auto;padding:40px 24px 80px}
+  header{border-bottom:2px solid var(--ink);padding-bottom:20px;margin-bottom:32px}
+  h1{margin:0 0 6px;font-size:30px;letter-spacing:-.5px}
+  .sub{color:var(--dim);font-size:14px}
+  h2{font-size:19px;margin:38px 0 14px;padding-left:11px;border-left:4px solid var(--accent)}
+  h3{font-size:15px;margin:24px 0 8px;color:var(--dim);font-weight:600}
+  p{margin:10px 0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:20px 22px;margin:16px 0;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .verdict{background:var(--accent-soft);border:1px solid #b6e3ff;
+    border-left:4px solid var(--accent);border-radius:8px;padding:16px 20px;margin:18px 0}
+  .verdict strong{color:var(--accent)}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0}
+  th,td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  th{background:#eef2f6;font-weight:600;color:var(--dim);font-size:13px}
+  tbody tr:hover{background:#f9fbfd}
+  .up{color:var(--up);font-weight:600}
+  .down{color:var(--down);font-weight:600}
+  .dim{color:var(--dim)}
+  .hi{background:var(--accent-soft);font-weight:600}
+  .mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13px}
+  ul{padding-left:22px;margin:10px 0}
+  li{margin:6px 0}
+  .bar-row{display:flex;align-items:center;gap:10px;margin:7px 0;font-size:13px}
+  .bar-label{width:130px;color:var(--dim);flex:none}
+  .bar-track{flex:1;background:#eaeef2;border-radius:4px;height:20px;position:relative;overflow:hidden}
+  .bar{height:100%;border-radius:4px}
+  .bar-val{width:120px;flex:none;text-align:right;font-family:ui-monospace,monospace}
+  .tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;
+    background:#eaeef2;color:var(--dim);margin-left:6px}
+  .tag.ok{background:#dafbe1;color:#1a7f37}
+  .tag.no{background:#ffebe9;color:#c0392b}
+  footer{margin-top:50px;padding-top:20px;border-top:1px solid var(--line);
+    color:var(--dim);font-size:13px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:720px){.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>fx-quant v1.0 · 最终版策略</h1>
+  <div class="sub">B站网页游戏《FX 简单!》量化交易程序 &nbsp;·&nbsp; 定案日期 2026-10-09 &nbsp;·&nbsp;
+  红线：不使用未来数据、不使用游戏内部实现</div>
+</header>
+
+<div class="verdict">
+  <strong>选定策略：自适应多因子 + 在线校准成本门槛。</strong><br>
+  4 个因子（trend / momentum / reversion / cycle）→ 用<b>信息系数（IC）</b>在线学习权重
+  → 用<b>已实现价格回归</b>校准"每单位分数值多少收益" → 只有预期收益盖过成本才下注。<br>
+  <span class="dim">选择它的理由不是"回测收益最高"，而是它<b>诚实</b>：有结构才赚，没结构不亏。</span>
+</div>
+
+<h2>一、最终版实测结果</h2>
+<p class="dim">8 档市场 × 每档 12 个随机种子 × 1500 时点 · <span class="mono">python final_report.py 12 1500</span></p>
+
+<h3>点差 0（游戏只有单一报价，确定成本仅手续费）</h3>
+<table>
+<thead><tr>
+  <th>市场（结构强度）</th><th>平均收益</th><th>中位</th><th>胜率</th><th>t 值</th><th>平均开仓</th><th>判读</th>
+</tr></thead>
+<tbody>
+<tr><td>flat（无结构）</td><td class="up">+1.44%</td><td>+2.23%</td><td>83%</td><td>+2.4</td><td>9.0</td><td class="dim">噪声</td></tr>
+<tr><td>trend (φ=.22)</td><td class="down">−0.50%</td><td>+0.66%</td><td>58%</td><td>−0.5</td><td>10.7</td><td class="dim">噪声</td></tr>
+<tr><td>trend_mod (φ=.60)</td><td class="up">+1.08%</td><td>+0.19%</td><td>50%</td><td>+0.5</td><td>24.3</td><td class="dim">噪声</td></tr>
+<tr class="hi"><td>trend_strong (φ=.85)</td><td class="up">+43.93%</td><td>+41.37%</td><td>100%</td><td>+11.6</td><td>29.7</td><td><span class="tag ok">真 edge</span></td></tr>
+<tr><td>revert (φ=−.22)</td><td class="up">+0.40%</td><td>+0.19%</td><td>50%</td><td>+0.8</td><td>7.2</td><td class="dim">噪声</td></tr>
+<tr><td>revert_mod (φ=−.60)</td><td class="up">+1.14%</td><td>+0.84%</td><td>75%</td><td>+2.0</td><td>11.0</td><td class="dim">噪声</td></tr>
+<tr><td>revert_strong (φ=−.85)</td><td class="down">−0.08%</td><td>0.00%</td><td>42%</td><td>−0.5</td><td>1.2</td><td><span class="tag no">短板</span></td></tr>
+<tr><td>cycle（纯周期）</td><td class="up">+1.66%</td><td>+1.68%</td><td>75%</td><td>+2.0</td><td>8.6</td><td class="dim">噪声</td></tr>
+</tbody>
+</table>
+
+<h3>点差 4 bp（成本敏感度对照）</h3>
+<table>
+<thead><tr><th>市场</th><th>平均收益</th><th>t 值</th><th>平均开仓</th></tr></thead>
+<tbody>
+<tr><td>flat</td><td class="down">−0.26%</td><td>−1.2</td><td>1.6</td></tr>
+<tr><td>trend</td><td class="down">−0.27%</td><td>−1.0</td><td>0.8</td></tr>
+<tr><td>trend_mod</td><td class="down">−0.65%</td><td>−0.7</td><td>6.0</td></tr>
+<tr class="hi"><td>trend_strong</td><td class="up">+40.49%</td><td>+11.0</td><td>28.6</td></tr>
+<tr><td>cycle</td><td class="up">+0.15%</td><td>+0.7</td><td>1.2</td></tr>
+</tbody>
+</table>
+
+<h3>结构强度 → 收益的梯度（点差 0）</h3>
+<div class="card">
+  <div class="bar-row"><div class="bar-label">flat（无结构）</div>
+    <div class="bar-track"><div class="bar" style="width:3.3%;background:#8b949e"></div></div>
+    <div class="bar-val">+1.44%</div></div>
+  <div class="bar-row"><div class="bar-label">trend（弱）</div>
+    <div class="bar-track"><div class="bar" style="width:0%;background:#8b949e"></div></div>
+    <div class="bar-val">−0.50%</div></div>
+  <div class="bar-row"><div class="bar-label">trend_mod（中）</div>
+    <div class="bar-track"><div class="bar" style="width:2.5%;background:#8b949e"></div></div>
+    <div class="bar-val">+1.08%</div></div>
+  <div class="bar-row"><div class="bar-label">trend_strong（强）</div>
+    <div class="bar-track"><div class="bar" style="width:100%;background:#c0392b"></div></div>
+    <div class="bar-val up">+43.93%</div></div>
+  <div class="bar-row"><div class="bar-label">revert_strong</div>
+    <div class="bar-track"><div class="bar" style="width:0%;background:#1a7f37"></div></div>
+    <div class="bar-val">−0.08%</div></div>
+  <div class="bar-row"><div class="bar-label">cycle（周期）</div>
+    <div class="bar-track"><div class="bar" style="width:3.8%;background:#8b949e"></div></div>
+    <div class="bar-val">+1.66%</div></div>
+  <p class="dim" style="margin:14px 0 0;font-size:13px">
+    只有 <b>trend_strong</b> 越过了"统计显著"这条线（t=+11.6），
+    而且加 4bp 点差后几乎不受影响 —— 这是唯一可称之为 edge 的东西。
+    其余档位的正收益都在噪声范围内。</p>
+</div>
+
+<h2>二、怎么读这些数字（必须说清楚的部分）</h2>
+<div class="grid2">
+  <div class="card">
+    <h3 style="margin-top:0">✅ 可以说的</h3>
+    <ul>
+      <li><b>强趋势市场有真 edge</b>：+43.9%、t=+11.6、胜率 100%，
+        加 4bp 成本仍有 +40.5%（t=+11.0）</li>
+      <li><b>无结构时不亏</b>：flat 扩到 24 种子 × 2000 时点后是
+        <span class="mono">−0.32%（t=−0.34）</span>，与 0 不可区分</li>
+      <li><b>成本升高会自动收缩</b>：点差 4bp 时弱结构市场开仓数
+        从 10.7 掉到 0.8 —— 门槛把"优势盖不住成本"的机会全挡掉</li>
+      <li><b>不使用未来数据</b>：4 项反前视测试全部通过</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">⚠️ 不能说的</h3>
+    <ul>
+      <li><b>不是"稳定盈利 5%"的系统</b>。期望值取决于目标市场
+        里到底有多少可提取的结构——那只能靠实盘观察</li>
+      <li>弱结构 / 无结构档位<b>没有赚钱</b>，只是"没有明显亏钱"</li>
+      <li><b>强均值回归是明确短板</b>：revert_strong 只有 −0.08%、
+        平均 1.2 笔开仓，几乎不交易</li>
+      <li>没有 walk-forward 稳健性检验，不能排除参数过拟合</li>
+    </ul>
+  </div>
+</div>
+
+<div class="verdict" style="background:#fff8e5;border-color:#ffd8a8;border-left-color:#d68f00">
+  <strong style="color:#a15c00">一句话总结</strong><br>
+  这是一个<b>"有结构才赚、没结构不亏"</b>的系统，不是一个"稳定盈利"的系统。
+  它在自建评估台上唯一稳健的收益来自强趋势市场；
+  在其余情形下它选择克制而非硬凑方向。
+</div>
+
+<h2>三、定案依据：为什么 cost_multiple = 3.0</h2>
+<p>扫描"保守度旋钮"（12 种子 × 5 档市场）：</p>
+<table>
+<thead><tr><th>cost_multiple</th><th>flat（无结构）</th><th>trend</th><th>trend_mod</th></tr></thead>
+<tbody>
+<tr><td>1.5</td><td class="up">+1.96% <span class="mono">(t=+3.8)</span> ← 假利润</td><td>+2.49%</td><td>+1.14%</td></tr>
+<tr class="hi"><td>3.0（<b>定案</b>）</td><td class="down">−0.67% <span class="mono">(t=−0.5)</span> ← 诚实</td><td class="up">+1.44% <span class="mono">(t=+2.4)</span></td><td class="up">+1.66% <span class="mono">(t=+2.0)</span></td></tr>
+<tr><td>6.0</td><td>+2.73% <span class="mono">(t=+1.0)</span></td><td class="down">−0.50%</td><td>+0.14%</td></tr>
+<tr><td>12.0</td><td>+1.11%</td><td>+1.08%</td><td class="down">−0.50%</td></tr>
+</tbody>
+</table>
+<p>1.5 档下 <b>flat（纯随机游走）跑出 t=+3.8 的"利润"</b>——这是假利润的典型特征：
+在没有结构的市场上系统性地赚钱，说明门槛太松，放行了大量"预期收益被噪声高估"的交易。
+3.0 档把 flat 按回零，同时保住趋势市场的显著正收益。6.0 / 12.0 则过严，把趋势优势也一起挡掉了。</p>
+
+<h2>四、本轮修掉的两处方向性 Bug</h2>
+<div class="card">
+  <h3 style="margin-top:0">① "等权 = 无信号"判据方向反了（致命）</h3>
+  <p>旧代码：<span class="mono">if max(weights) &lt;= 0.38: 不开仓</span>。
+  4 个因子时"等权"是 <b>0.25 ≤ 0.38</b> —— 结果是
+  <b>显著因子越多、权重越分散，越被判为"无信号"而禁止开仓</b>。</p>
+  <p>实测后果：在 <b>trend_strong</b> 市场（4 因子全部显著，
+  t=2.7 / 8.0 / −8.6 / 2.5），1500 轮里只发出 <b>3 次</b>开仓请求且全被挡下 ——
+  策略在最该交易的市场上完全不交易。</p>
+  <p>修复：判据改为"权重是否<b>全为零</b>"，与是否均匀无关。</p>
+  <h3>② 因子符号被抹掉，反向指标无法反用</h3>
+  <p><span class="mono">math.copysign(mean, 1.0)</span> 恒返正数 →
+  学习器<b>永远无法给反向因子负权重</b>。
+  修复：<span class="mono">math.copysign(strength, mean)</span>。</p>
+</div>
+
+<h2>五、已知短板与下一步</h2>
+<ul>
+  <li><b>改掉强均值回归的短板</b>（第一优先）—— 平仓逻辑（追踪止盈 + 240 轮超时 +
+    信号反转）天然偏趋势，在反转型行情里容易被打脸</li>
+  <li>验证长时间运行稳定性（数小时连续跑，观察内存与累计误差）</li>
+  <li>平仓盈亏取真实回执值，而非平仓前估算</li>
+  <li>补充 walk-forward 检验，确认参数不是过拟合出来的</li>
+  <li>用真实历史汇率数据回测，看因子在真实市场里的表现</li>
+</ul>
+
+<h2>六、方法论教训（记录在案）</h2>
+<div class="card">
+<ol style="padding-left:20px;margin:0">
+  <li><b>小样本会撒谎。</b>flat 在 6 种子 × 1500 时点下是 +3.14%，
+    扩到 24 种子后是 −0.32%。任何"策略赚钱"的结论都必须带
+    <b>t 统计量</b>与<b>样本量</b>。</li>
+  <li><b>无结构市场出现系统性正收益 = 假利润</b>，先怀疑评估方法或门槛，别急着庆祝。</li>
+  <li><b>必须做零假设对照</b>（随机方向 + 同一套风控与平仓逻辑）。
+    只看策略自身收益，无法区分"信号有预测力"与"仿真层有偏置"。</li>
+  <li><b>重叠样本会高估 t。</b>登记预测必须降采样（<span class="mono">now % eval_horizon == 0</span>），
+    否则相邻时点共享同一段未来价格，t 值被严重夸大。</li>
+  <li><b>不要用游戏内部参数做回测</b>——那与偷看未来等价。
+    评估台刻意不含游戏任何参数，这正是它的全部价值。</li>
+</ol>
+</div>
+
+<footer>
+  复核方式：<span class="mono">python test_no_lookahead.py</span>（反前视）&nbsp;·&nbsp;
+  <span class="mono">python final_report.py 12 1500</span>（终版评估）&nbsp;·&nbsp;
+  <span class="mono">python sweep_cost_multiple.py</span>（保守度扫描）<br>
+  完整说明见项目 <span class="mono">README.md</span>。回测结果仅反映合成环境表现，不构成投资建议。
+</footer>
+
+</div>
+</body>
+</html>

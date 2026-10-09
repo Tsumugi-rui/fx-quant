@@ -1,0 +1,19 @@
+# 统一换行符为 LF 入库，避免 Windows/macOS 协作时整文件 diff 噪音
+* text=auto eol=lf
+
+*.py    text eol=lf
+*.js    text eol=lf
+*.md    text eol=lf
+*.html  text eol=lf
+*.json  text eol=lf
+*.txt   text eol=lf
+
+# 二进制文件不参与换行符转换
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.zip   binary
+*.pdf   binary
+*.whl   binary
