@@ -20,6 +20,13 @@ import time
 import urllib.error
 import urllib.request
 
+import sys
+from pathlib import Path
+
+# 本脚本位于 tests/ 子目录：把项目根加入 sys.path，才能 import fxquant
+# （Python 只把**脚本所在目录**放进 sys.path[0]，子目录脚本看不到根目录的包）
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from fxquant.bridge import BridgeExecution, BridgeServer
 from fxquant.execution import DryRunExecution, ExecutionError
 

@@ -10,7 +10,8 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+# 本脚本位于 tools/ 子目录：把项目根加入 sys.path，才能 import fxquant
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from fxquant.config import trade_fee
 

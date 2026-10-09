@@ -14,6 +14,8 @@ logs/
 _diag_*.txt
 _sweep_*.txt
 final_report.json
+# `run.py backtest --report report.html` 的产物，按需生成即可
+report.html
 
 # ---- 旧版备份 / 临时文件（非项目内容）----
 *.bak

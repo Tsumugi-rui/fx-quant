@@ -208,7 +208,8 @@ def write_report(path: str, perf, result, engine_counts: dict[str, int],
 
 def cmd_selftest(args: argparse.Namespace) -> int:
     import subprocess
-    script = Path(__file__).resolve().parent / "test_no_lookahead.py"
+    script = (Path(__file__).resolve().parent
+              / "tests" / "test_no_lookahead.py")
     return subprocess.call([sys.executable, str(script)])
 
 

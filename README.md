@@ -13,7 +13,7 @@
 ### 红线 1：不读取未来走势
 
 策略在任意时刻只能看到**截至该时刻已经发生的价格**。
-程序在机制上保证这一点，并在 `test_no_lookahead.py` 里用四种方法反复验证。
+程序在机制上保证这一点，并在 `tests/test_no_lookahead.py` 里用四种方法反复验证。
 
 ### 红线 2：不使用程序内部实现的知识
 
@@ -182,7 +182,7 @@
 才说明策略真的没有 edge。
 
 **为什么分三档强度？** 早期评估只用了 φ=±0.22 一档。
-用因子 IC 诊断（`python diag_factor_ic.py`）实测发现，该档下最有效因子的
+用因子 IC 诊断（`python tools/diag_factor_ic.py`）实测发现，该档下最有效因子的
 IC 仅约 0.05，而强结构档（φ=0.85）可达 **0.24** ——
 也就是说弱档本身就"几乎无结构"，策略在弱档上赚不到钱是正常现象，
 并不能说明策略有问题。分档之后才能看出真正的能力边界。
@@ -308,7 +308,7 @@ for sp in (0.0, 0.0004, 0.0008):
 样本数会迅速凑够，让校准器在只有几个非零样本时就宣布可用，
 算出一个噪声主导的 β 并据此否决全部交易。
 
-> `diag_bootstrap.py` 对比了「校准就绪前允许交易」与「禁止交易」：
+> `tools/diag_bootstrap.py` 对比了「校准就绪前允许交易」与「禁止交易」：
 > 禁止交易在多数档位略优（`flat` −0.62% vs −0.88%），
 > 但**有死锁风险**（学习器若始终找不到显著因子则永不交易）。
 > 默认选择允许交易（`require_calibration=False`），保底能活起来。
@@ -369,7 +369,7 @@ python run.py backtest --ticks 6000 --report report.html
 python run.py selftest
 
 # 桥接链路端到端自检（不碰真实游戏）
-python test_bridge_e2e.py
+python tests/test_bridge_e2e.py
 
 # 内存演练实时循环（无副作用）
 python run.py live --backend sim --ticks 1200 --interval 0
@@ -693,7 +693,7 @@ fetch(url, { targetAddressSpace: 'loopback' })
 > 等于没有止盈。结果是离场只剩信号反转和超时，而这两条都倾向于
 > 在价格已经往回走之后才发生，表现为「本来盈利，拖到亏损」。
 
-参数定案依据（`sweep_profit_guard.py`，8 档市场 × 12 种子 × 1500 轮）：
+参数定案依据（`tools/sweep_profit_guard.py`，8 档市场 × 12 种子 × 1500 轮）：
 
 | 配置 | 结构档均值 | flat | trend_mod | 开仓/档 |
 |---|---|---|---|---|
@@ -799,15 +799,15 @@ score = (Σ 因子值×权重 / Σ|权重|) × (1 + 波动率×0.55)
 ### 测试
 
 ```bash
-python test_bridge_e2e.py    # 桥接协议链路（9 项，模拟浏览器客户端）
+python tests/test_bridge_e2e.py    # 桥接协议链路（9 项，模拟浏览器客户端）
 python run.py selftest       # 反未来函数自检（4 项）
 
 # DOM 解析逻辑（需要 Node + jsdom）
 npm install jsdom
-NODE_PATH=./node_modules node test_dom_parse.js
+NODE_PATH=./node_modules node tests/test_dom_parse.js
 ```
 
-`test_dom_parse.js` 用实测抓取的真实页面结构做夹具，
+`tests/test_dom_parse.js` 用实测抓取的真实页面结构做夹具，
 覆盖价格提取、持仓解析、表单定位、多选择器回退链、
 提示浮层自动关闭（9 项：该关的关、不该关的不动）、
 边界情况（空页面、非法数据），共 31 项断言。
@@ -852,43 +852,59 @@ NODE_PATH=./node_modules node test_dom_parse.js
 
 ```
 fx-quant/
-├── fxquant/
-│   ├── config.py         # 标的定义、公开交易规则、策略与风控参数
-│   ├── market.py         # 行情数据源（CSV / 合成），对策略黑箱
-│   ├── broker.py         # 账户、持仓、盈亏、爆仓结算
-│   ├── indicators.py     # 因果增量指标库 + 反未来函数自检
-│   ├── adaptive.py       # 自适应因子权重（在线学习）
-│   ├── strategy.py       # 多因子信号引擎
-│   ├── risk.py           # 风控与仓位管理
-│   ├── engine.py         # 回测逐时点主循环
-│   ├── performance.py    # 绩效指标
-│   ├── execution.py      # 执行层协议 + DryRun 包装
-│   ├── sim_execution.py  # 内存模拟执行后端
-│   ├── eval_market.py    # 合成市场（评估台专用，不含游戏任何参数）
-│   ├── bridge.py         # HTTP 桥接服务 + 桥接执行器
-│   └── live.py           # 实时交易循环
-├── run.py                # 命令行入口
-├── eval_harness.py       # 策略评估台：多市场 × 多种子 × 多点差
-├── final_report.py       # 最终版评估报告（多进程，输出梯度表 + t 值）
-├── sweep_cost_multiple.py # 扫描成本门槛保守度，选定 cost_multiple
-├── diag_factor_ic.py     # 因子 IC 诊断：各市场下每个因子的预测力
-├── diag_null_test.py     # 零假设检验：正常策略 vs 随机方向对照（判真假 edge）
-├── diag_trades.py        # 导出单市场全部成交明细，定位系统性偏置
-├── browser_bridge.user.js # 油猴脚本（DOM 版：读页面 + 点按钮 + 关提示）
-├── probe_close_toast.js  # 平仓提示探测脚本（临时诊断用，可删）
-├── test_no_lookahead.py  # 反未来函数测试套件
-├── test_bridge_e2e.py    # 桥接链路端到端测试（Python）
-├── test_dom_parse.js     # DOM 解析逻辑测试（Node + jsdom）
-├── smoke_test.py         # 流程冒烟测试
-├── fee_analysis.py       # 手续费结构分析
-└── validate_adaptive.py  # 自适应机制有效性验证
+├── fxquant/                    # 核心包（策略 / 风控 / 执行 / 桥接）
+│   ├── config.py               # 标的定义、公开交易规则、策略与风控参数
+│   ├── market.py               # 行情数据源（CSV / 合成），对策略黑箱
+│   ├── broker.py               # 账户、持仓、盈亏、爆仓结算
+│   ├── indicators.py           # 因果增量指标库 + 反未来函数自检
+│   ├── adaptive.py             # 自适应因子权重（在线学习）
+│   ├── strategy.py             # 多因子信号引擎
+│   ├── risk.py                 # 风控与仓位管理
+│   ├── engine.py               # 回测逐时点主循环
+│   ├── performance.py          # 绩效指标
+│   ├── execution.py            # 执行层协议 + DryRun 包装
+│   ├── sim_execution.py        # 内存模拟执行后端
+│   ├── eval_market.py          # 合成市场（评估台专用，不含游戏任何参数）
+│   ├── bridge.py               # HTTP 桥接服务 + 桥接执行器
+│   └── live.py                 # 实时交易循环
+│
+├── run.py                      # 命令行入口（backtest/live/bridge/strategy/selftest）
+├── browser_bridge.user.js      # 油猴脚本（DOM 版：读页面 + 点按钮 + 关提示）
+├── LICENSE                     # MIT
+│
+├── eval_harness.py             # 策略评估台：多市场 × 多种子 × 多点差
+├── final_report.py             # 最终版评估报告（多进程，输出梯度表 + t 值）
+├── FINAL_REPORT.html           # 评估报告存档
+│
+├── tools/                      # 诊断 / 扫描 / 探针（不在运行路径上）
+│   ├── README.md               # 每个脚本回答什么问题
+│   ├── diag_ic.py              # 各因子在不同预测周期下的 IC
+│   ├── diag_factor_ic.py       # 因子 IC 诊断：各市场下每个因子的预测力
+│   ├── diag_score.py           # score 与后续收益的关系（大样本）
+│   ├── diag_edge.py            # 信号方向命中率：是否显著偏离 50%
+│   ├── diag_null_test.py       # 零假设检验：正常策略 vs 随机方向对照
+│   ├── diag_bootstrap.py       # 校准就绪前允许交易 vs 禁止交易
+│   ├── diag_trades.py          # 导出单市场全部成交明细，定位系统性偏置
+│   ├── diag_exits.py           # 浮盈峰值 vs 平仓盈亏（量化「拖到止损」）
+│   ├── sweep_cost_multiple.py  # 扫描成本门槛保守度，选定 cost_multiple
+│   ├── sweep_profit_guard.py   # 扫描盈利保护参数，选定 arm / giveback
+│   ├── fee_analysis.py         # 手续费结构分析
+│   ├── validate_adaptive.py    # 自适应机制有效性验证（已知有结构的数据）
+│   ├── probe_order_panel.js    # 下单面板 DOM 探针（Console 粘贴运行）
+│   └── probe_close_toast.js    # 平仓提示浮层 DOM 探针
+│
+└── tests/                      # 回归测试（断言式，该长期跑）
+    ├── test_no_lookahead.py    # 反未来函数测试套件（最重要）
+    ├── test_bridge_e2e.py      # 桥接链路端到端测试（Python）
+    ├── test_dom_parse.js       # DOM 解析逻辑测试（Node + jsdom）
+    └── smoke_test.py           # 流程冒烟测试
 ```
 
 ---
 
 ## 七、反未来函数测试
 
-`test_no_lookahead.py` 用四种独立方法交叉验证：
+`tests/test_no_lookahead.py` 用四种独立方法交叉验证：
 
 1. **前视污染测试** —— 往序列尾部注入极端数据，检查前缀的指标输出是否改变。
    因果函数不应该改变。
@@ -957,7 +973,8 @@ python run.py selftest
 **当前局限：**
 
 - **唯一稳健的 edge 只在强趋势市场**（详见"最终版实测结果"）：
-  `trend_strong` 上 +43.9%（t=+11.6），其余档位都在噪声内 ≈ 保本。
+  `trend_strong` 上 +48.03%（t=+8.52，12 种子 × 1500 轮），
+  其余档位都在噪声内 ≈ 保本。
   这不是"稳定盈利"系统，是"有结构才赚、没结构不亏"系统
 - **强均值回归市场是短板**：`revert_strong` 只有 −0.08%、
   平均 1.2 笔开仓。平仓逻辑偏趋势（追踪止盈 + 超时 + 信号反转），
@@ -1007,3 +1024,9 @@ python run.py selftest
 所有交易规则来自游戏界面公开信息。
 程序的回测结果仅反映特定合成环境或用户提供的历史数据上的表现，
 不构成任何投资建议。
+
+---
+
+## 十、授权
+
+[MIT](LICENSE)。

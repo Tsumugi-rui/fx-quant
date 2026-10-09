@@ -313,7 +313,7 @@ class RiskConfig:
     # === 参数取值：arm = 1.0%，giveback = 40%（由扫描定案）===
     #
     # 扫描口径：合成市场 8 档 × 12 种子 × 1500 轮，逐组试算
-    # （脚本 `sweep_profit_guard.py`，日志 logs/_sweep_guard*.txt）。
+    # （脚本 `tools/sweep_profit_guard.py`，日志 logs/_sweep_guard*.txt）。
     #
     #   配置              结构档均值    flat    趋势档(trend_mod)
     #   关闭保护(旧)        +9.71%     -0.72%      +4.52%

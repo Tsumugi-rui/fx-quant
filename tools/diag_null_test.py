@@ -15,6 +15,12 @@ import math
 import statistics
 import sys
 
+from pathlib import Path
+
+# 本脚本位于 tools/ 子目录：把项目根加入 sys.path，才能 import fxquant
+# （Python 只把**脚本所在目录**放进 sys.path[0]，子目录脚本看不到根目录的包）
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from fxquant.config import EngineConfig, PAIR_IDS
 from fxquant.eval_market import make_market
 from fxquant.live import LiveConfig, LiveTrader
